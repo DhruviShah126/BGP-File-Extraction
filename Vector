@@ -1,0 +1,508 @@
+#include <iostream>
+#include <stdexcept>
+
+using namespace std;
+
+template <typename T>
+class Vector {
+ public:
+    // iterator support
+    using iterator = T*;
+    using const_iterator = const T*;
+
+    // constructor, destructor, and copy constructor
+    Vector();                                         // default zero parameter constructor
+    Vector(const Vector &rhs);                        // copy constructor
+    Vector(Vector &&rhs);                             // move constructor
+    explicit Vector(int num, const T& val = T());     // num elements with value of val
+    Vector(const_iterator start, const_iterator end); // constructs with elements [start, end)
+
+    ~Vector(); // destructor
+
+    // operators
+
+    // index operator
+    T& operator[](int index);
+    const T& operator[](int index) const;
+
+    // copy assignment operator
+    const Vector& operator=(const Vector &rhs);
+
+    // move assignment operator
+    Vector & operator=(Vector &&rhs);
+
+    // at function. safer than operator[]
+    T& at(int loc );
+    const T& at(int loc ) const;
+
+    T &front();                                       // reference to the first element
+    const T& front() const;
+    T &back();                                        // reference to the last element
+    const T & back() const;
+
+    // accessor member functions
+    int size() const;                                 // number of elements
+    int capacity() const;                             // capacity of vector
+    bool empty() const;                               // check if list is empty
+
+    // mutator member functions
+    void clear();                                     // delete all elements
+
+    void push_back(const T & val);                    // insert to the end
+    void pop_back();                                  // delete last element
+
+
+    void resize(int num, T val = T());                // resize vector
+    void reserve(int newCapacity);                    // reserve memory
+
+    // print out all elements. ofc is deliminitor
+    void print(std::ostream& os, char ofc = ' ') const;
+
+    // iterator support
+    iterator begin();                                 // iterator to first element
+    const_iterator begin() const;
+    iterator end();                                   // end marker iterator
+    const_iterator end() const;
+    iterator insert(iterator itr, const T& val);      // insert val ahead of itr
+    iterator erase(iterator itr);                     // erase one element
+    iterator erase(iterator start, iterator end);     // erase [start, end)
+
+
+private:
+    int theSize;                                      // number of elements
+    int theCapacity;                                  // number of elements that can be stored
+    T *array;                                         // dynamic array to store elements.
+
+    void doubleCapacity();
+}; // end of class Vector
+
+// overloading comparison operators
+template <typename T>
+bool operator==(const Vector<T> & lhs, const Vector<T> &rhs);
+
+template <typename T>
+bool operator!=(const Vector<T> & lhs, const Vector<T> &rhs);
+
+// overloading output operator
+template <typename T>
+std::ostream & operator<<(std::ostream &os, const Vector<T> &v);
+
+// --------------------------------------------- Vector.hpp -----------------------------------------------
+
+template <typename T>
+Vector<T>::Vector()
+// default 0 parameter constructor
+{
+  theSize = 0;
+  theCapacity = 0;
+  array = nullptr;
+}
+
+template <typename T>
+Vector<T>::Vector(const Vector &rhs)
+// copy constructor
+{
+  theSize = rhs.theSize;
+  theCapacity = rhs.theCapacity;
+  array = new T[theCapacity];
+  for (int i = 0; i < theSize; i++)
+  {
+    array[i] = rhs.array[i];
+  }
+}
+
+template <typename T>
+Vector<T>::Vector(Vector &&rhs)
+// move constructor
+{
+  theSize = rhs.theSize;
+  theCapacity = rhs.theCapacity;
+  array = rhs.array;
+  rhs.array = nullptr;
+  rhs.theSize = 0;
+  rhs.theCapacity = 0;
+}
+
+template <typename T>
+Vector<T>::Vector(int num, const T& val)
+// construct a vector with num elements all initilized with value of val
+// capacity also = num
+{
+  theSize = num;
+  theCapacity = num;
+  array = new T[theCapacity];
+  for (int i = 0; i < theSize; i++)
+  {
+    array[i] = val;
+  }
+}
+
+template <typename T>
+Vector<T>::Vector(const_iterator start, const_iterator end)
+// constructs with elements [start, end)
+{
+  int i = 0;
+  theSize = end - start;
+  theCapacity = theSize + 1;
+  array = new T[theCapacity];
+  for (const_iterator itr = start; itr != end; itr++)
+  {
+    array[i] = *itr;
+    i++;
+  }
+}
+
+template <typename T>
+Vector<T>::~Vector()
+//destructor
+{
+  delete [] array;
+}
+
+//----- operators
+
+// index operator
+template <typename T>
+T& Vector<T>::operator[](int index)
+{
+  return array[index];
+}
+
+template <typename T>
+const T& Vector<T>::operator[](int index) const
+{
+  return array[index];
+}
+
+template <typename T>
+const Vector<T>& Vector<T>::operator=(const Vector<T> &rhs)
+// copy assignment operator
+{
+  if (this != &rhs)
+  {
+    delete [] array;
+    theSize = rhs.theSize;
+    theCapacity = rhs.theCapacity;
+    array = new T[theCapacity];
+    for (int i = 0; i < theSize; i++)
+    {
+      array[i] = rhs.array[i];
+    }
+  }
+  return *this;
+}
+
+template <typename T>
+Vector<T>& Vector<T>::operator=(Vector<T> &&rhs)
+// move assignment operator
+{
+  if (this != &rhs)
+  {
+    swap(theSize, rhs.theSize);
+    swap(theCapacity, rhs.theCapacity);
+    swap(array, rhs.array);
+  }
+
+  return *this;
+}
+
+template <typename T>
+T& Vector<T>::at(int loc)
+// at function. safer than operator[]
+{
+  if ((loc < 0) || (loc >= theSize))
+  {
+    throw out_of_range("Vector was found to be out of range");
+  }
+  return array[loc];
+}
+
+template <typename T>
+const T& Vector<T>::at(int loc ) const
+{
+  if ((loc < 0) || (loc >= theSize))
+  {
+    throw out_of_range("Vector was found to be out of range");
+  }
+  return array[loc];
+}
+
+template <typename T>
+T& Vector<T>::front()
+// reference to the first element
+{
+   return array[0];
+}
+
+template <typename T>
+const T& Vector<T>::front() const
+{
+  return array[0];
+}
+
+template <typename T>
+T& Vector<T>::back()
+// reference to the last element
+{
+  return array[theSize - 1];
+}
+
+template <typename T>
+const T& Vector<T>::back() const
+{
+  return array[theSize - 1];
+}
+
+// accessor member functions
+
+template <typename T>
+int Vector<T>::size() const
+// number of elements
+{
+  return theSize;
+}
+
+template <typename T>
+int Vector<T>::capacity() const
+// capacity of vector
+{
+  return theCapacity;
+}
+
+template <typename T>
+bool Vector<T>::empty() const
+// check if list is empty
+{
+  if (theSize == 0)
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
+//mutator member functions
+
+template <typename T>
+void Vector<T>::clear()
+// delete all elements
+{
+  while (!empty())
+  {
+    pop_back();
+  }
+}
+
+template <typename T>
+void Vector<T>::push_back(const T& val)
+// insert to the end
+{
+  if (theSize == theCapacity)
+  {
+    reserve(2 * theCapacity);
+  }
+  array[theSize++] = val;
+}
+
+template <typename T>
+void Vector<T>::pop_back()
+// delete last element
+{
+  --theSize;
+}
+
+template <typename T>
+void Vector<T>::resize(int num, T val)
+// resize vector
+{
+  int temp;
+  int numOfPops;
+
+  if (num == theSize)
+  {
+    return;
+  }
+  else if (num < theSize)
+  {
+    numOfPops = theSize - num;
+    for (int i = 0; i < numOfPops; i++)
+    {
+      pop_back();
+    }
+  }
+  else if (num > theSize)
+  {
+    reserve(num);
+    temp = theSize;
+    theSize = num;
+    for (int i = temp; i < theSize; i++)
+    {
+      array[i] = val;
+    }
+  }
+}
+
+template <typename T>
+void Vector<T>::reserve(int newCapacity)
+// reserve memory
+{
+  if (newCapacity == 0)
+  {
+     newCapacity = 1;
+     T *newArray = new T[newCapacity];
+     for (int i = 0; i < theSize; i++)
+     {
+       newArray[i] = array[i];
+     }
+     theCapacity = newCapacity;
+     swap(array, newArray);
+     delete [] newArray;
+  }
+  else if (newCapacity <= theCapacity)
+  {
+    return;
+  }
+  else if (newCapacity > theCapacity)
+  {
+    T *newArray = new T[newCapacity];
+    for (int i = 0; i < theSize; i++)
+    {
+      newArray[i] = array[i];
+    }
+    theCapacity = newCapacity;
+    swap(array, newArray);
+    delete [] newArray;
+  }
+}
+
+template <typename T>
+void Vector<T>::print(ostream& os, char ofc) const
+// print out all elements. ofc is the delimitor
+{
+  for (int i = 0; i < theSize; i++)
+  {
+    cout << array[i] << ofc;
+  }
+  cout << endl;
+}
+
+//iterator support
+
+template <typename T>
+typename Vector<T>::iterator Vector<T>::begin()
+// iterator to first element
+{
+  return &array[0];
+}
+
+template <typename T>
+typename Vector<T>::const_iterator Vector<T>::begin() const
+{
+  return &array[0];
+}
+
+template <typename T>
+typename Vector<T>::iterator Vector<T>::end()
+// end marker iterator
+{
+  return &array[size()];
+}
+
+template <typename T>
+typename Vector<T>::const_iterator Vector<T>::end() const
+{
+  return &array[size()];
+}
+
+template <typename T>
+typename Vector<T>::iterator Vector<T>::insert(iterator itr, const T& val)
+// insert val ahead of itr
+{
+  theSize++;
+  int index = itr - begin();
+  int i;
+  for (i = theSize; i > index; --i)
+  {
+    array[i] = array[i - 1];
+  }
+  array[i] = val;
+  return &array[i];
+}
+
+template <typename T>
+typename Vector<T>::iterator Vector<T>::erase(iterator itr)
+// erase one element
+{
+  int index = itr - begin();
+  int i;
+  for (i = index; i < (theSize - 1); i++)
+  {
+    array[i] = array[i+1];
+  }
+  theSize = theSize - 1;
+  return &array[index];
+}
+
+template <typename T>
+typename Vector<T>::iterator Vector<T>::erase(iterator start, iterator end)
+// erase [start, end)
+{
+  int indexStart = start - begin();
+  int indexEnd =  end - begin();
+  int offset = indexEnd - indexStart;
+  for (int i = indexStart; i < (theSize - 1); i++)
+  {
+    array[i] = array[i + offset];
+  }
+  theSize = theSize - offset;
+  return &array[indexEnd];
+}
+
+template <typename T>
+void Vector<T>::doubleCapacity()
+{
+  if (theCapacity == 0)
+  {
+    theCapacity = 1;
+  }
+  else
+  {
+    reserve(theCapacity * 2);
+  }
+}
+
+template <typename T>
+bool operator==(const Vector<T> & lhs, const Vector<T> &rhs)
+{
+  if (lhs.size() == rhs.size())
+  {
+    for (int i = 0; i < lhs.size(); i++)
+    {
+      if (lhs[i] != rhs[i])
+      {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
+template <typename T>
+bool operator!=(const Vector<T> & lhs, const Vector<T> &rhs)
+{
+  return !(lhs == rhs);
+}
+
+template <typename T>
+ostream & operator<<(ostream &os, const Vector<T> &v)
+{
+  for (int i = 0; i < v.size(); i++)
+  {
+    os << v[i] << " ";
+  }
+  return os;
+}
+
+
